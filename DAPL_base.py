@@ -120,7 +120,7 @@ class DAPL :
 
 		#self.loss=tf.sqrt(tf.reduce_mean(tf.square(recons_X-self.X)))
 		#self.loss=tf.reduce_mean(tf.square(recons_X-self.X))
-		self.loss=tf.reduce_mean(tf.square(recons_X-self.X))
+		self.loss=tf.reduce_mean(tf.square(self.X_mask_inverse*(recons_X-self.X)))
 
 	def optimizer_func(self) :
 
@@ -151,7 +151,7 @@ class DAPL :
 					#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
 
 
-					_, l = sess.run([self.optimizer, self.loss], feed_dict = {self.X : batch_x})
+					_, l = sess.run([self.optimizer, self.loss], feed_dict = {self.X : batch_x, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
 
 				 
 
