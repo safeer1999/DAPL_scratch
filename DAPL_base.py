@@ -33,7 +33,7 @@ class DataHandler :
 		self.batch_beg+=self.batch_size
 		self.batch_end+=self.batch_size
 
-		return batch_R, batch_mask
+		return batch_R, batch_mask, batch_mask_inverse
 
 	def get_num_batch(self) :
 
