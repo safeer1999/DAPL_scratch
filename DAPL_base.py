@@ -120,7 +120,7 @@ class DAPL :
 
 		#self.loss=tf.sqrt(tf.reduce_mean(tf.square(recons_X-self.X)))
 		#self.loss=tf.reduce_mean(tf.square(recons_X-self.X))
-		self.loss=tf.reduce_mean(tf.square(self.X_mask_inverse*(recons_X-self.X)))
+		self.loss=tf.sqrt(tf.reduce_mean(tf.square(self.X_mask_inverse*(recons_X-self.X))))
 
 	def optimizer_func(self) :
 
@@ -155,14 +155,14 @@ class DAPL :
 
 				 
 
-				print("Epoch: ", epoch + 1, "cost: ", "{:.3f}".format(l))
+				print("Epoch: ", epoch + 1, "cost: ", "{:.5}".format(l))
 
 
 def main() :
 
 	#mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 	Dataset = DataHandler('./Experiment/BioDataset1')
-	obj = DAPL(Dataset = Dataset, learning_rate = 0.01 , epochs = 10 , batch_size = 150, shape = (None,1200))
+	obj = DAPL(Dataset = Dataset, learning_rate = 0.001 , epochs = 10 , batch_size = 150, shape = (None,1200))
 
 	obj.network_weights_biases([1200,600,300,600,1200])
 	obj.train()
