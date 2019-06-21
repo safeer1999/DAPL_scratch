@@ -33,15 +33,15 @@ class DataHandler :
 		batch_R = self.R[self.batch_beg:self.batch_end, :]
 
 
-		self.batch_beg+=self.batch_size
-		self.batch_end+=self.batch_size
+		#print("Batch R:", batch_R.shape)
 
-		return batch_R, batch_mask, batch_mask_inverse
+		return batch_R
 
 	def next_batch_mask(self, missing_perc = 0.1) :
 
 		if self.mask_given :
 			batch_mask = self.mask[self.batch_beg:self.batch_end, :]
+			#print('batch_mask.shape: ',batch_mask.shape)
 
 		else :
 			batch_mask = np.random.binomial(1, missing_perc, size=self.batch_size*self.R.shape[1]).reshape(self.batch_size, self.R.shape[1])
@@ -49,6 +49,11 @@ class DataHandler :
 		batch_mask_inverse = np.where(batch_mask , 0 , 1)
 
 		return batch_mask,batch_mask_inverse
+
+	def inc_batch(self) :
+
+		self.batch_beg+=self.batch_size
+		self.batch_end+=self.batch_size
 
 	def get_num_batch(self) :
 
@@ -130,9 +135,9 @@ class DAPL :
 			input_tensor = layer
 
 		#reconstructed matrix
-		output = input_tensor
+		self.output = input_tensor
 
-		return output
+		return self.output
 
 	def loss_func(self,X,recons_X) :
 
@@ -163,7 +168,10 @@ class DAPL :
 				total_batch = self.Dataset.get_num_batch()
 				for i in range(total_batch) :
 
-					batch_x, batch_mask, batch_mask_inverse = self.Dataset.next_batch()
+					batch_x = self.Dataset.next_batch()
+					batch_mask, batch_mask_inverse = self.Dataset.next_batch_mask(self.missing_perc)
+					self.Dataset.inc_batch()
+
 					#print(batch_x.shape, batch_mask.shape)
 					corrupted_batch = np.asarray(batch_x)*np.asarray(batch_mask)
 
@@ -172,6 +180,9 @@ class DAPL :
 
 
 					_, l = sess.run([self.optimizer, self.loss], feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
+					recons_batch = sess.run(recons_X,feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
+
+					print(batch_x)
 
 				 
 
@@ -181,11 +192,11 @@ class DAPL :
 def main() :
 
 	#mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-	Dataset = DataHandler('./Experiment/BioDataset1')
-	obj = DAPL(Dataset = Dataset, learning_rate = 0.001 , epochs = 10 , batch_size = 150, shape = (None,1200))
+	Dataset = DataHandler('./Experiment/BioDataset1', mask_given = False)
+	model = DAPL(Dataset = Dataset, learning_rate = 0.001 , epochs = 10 , batch_size = 150, shape = (None,1200), missing_perc = 0.01)
 
-	obj.network_weights_biases([1200,600,300,600,1200])
-	obj.train()
+	model.network_weights_biases([1200,600,300,600,1200])
+	model.train()
 
 main()
 
