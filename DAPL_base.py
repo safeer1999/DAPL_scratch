@@ -7,9 +7,13 @@ import scipy.sparse as scp
 #Used to manage datasets
 class DataHandler :
 
-	def __init__(self, directory_path):
+	def __init__(self, directory_path, mask_given  = False):
 		self.R = scp.load_npz(directory_path +  '/' + 'rating.npz').todense()
-		self.mask = scp.load_npz(directory_path +  '/' + 'train_mask.npz').todense()
+		self.mask_given = mask_given
+		if self.mask_given :
+			self.mask = scp.load_npz(directory_path +  '/' + 'train_mask.npz').todense()
+		else :
+			self.mask = None
 
 
 	def batch_init(self, batch_size) : #initialize dataset batch control variables
@@ -27,13 +31,24 @@ class DataHandler :
 	def next_batch(self):# produces the next batch of rows from the datasets sequentially as when its called
 
 		batch_R = self.R[self.batch_beg:self.batch_end, :]
-		batch_mask = self.mask[self.batch_beg:self.batch_end, :]
-		batch_mask_inverse = np.where(batch_mask , 0 , 1)
+
 
 		self.batch_beg+=self.batch_size
 		self.batch_end+=self.batch_size
 
 		return batch_R, batch_mask, batch_mask_inverse
+
+	def next_batch_mask(self, missing_perc = 0.1) :
+
+		if self.mask_given :
+			batch_mask = self.mask[self.batch_beg:self.batch_end, :]
+
+		else :
+			batch_mask = np.random.binomial(1, missing_perc, size=self.batch_size*self.R.shape[1]).reshape(self.batch_size, self.R.shape[1])
+
+		batch_mask_inverse = np.where(batch_mask , 0 , 1)
+
+		return batch_mask,batch_mask_inverse
 
 	def get_num_batch(self) :
 
@@ -45,7 +60,7 @@ class DataHandler :
 
 class DAPL :
 
-	def __init__(self, Dataset = None , learning_rate = 0.1 , epochs = 10 , batch_size = 20, shape = (0,0)) :
+	def __init__(self, Dataset = None , learning_rate = 0.1 , epochs = 10 , batch_size = 20, shape = (0,0), missing_perc = 0.1) :
 
 		#Datasets
 		self.Dataset = Dataset
@@ -55,11 +70,13 @@ class DAPL :
 		self.epochs = epochs
 		self.batch_size = batch_size
 		self.shape = shape
+		self.missing_perc = missing_perc
 
 		#Training Paceholders
 		self.X = tf.placeholder(tf.float32, [None, self.shape[1]])
 		self.X_mask = tf.placeholder(tf.float32, [None, self.shape[1]])
 		self.X_mask_inverse = tf.placeholder(tf.float32, [None, self.shape[1]])
+		self.input_X = tf.placeholder(tf.float32, [None, self.shape[1]])
 
 		#Session variables
 		self.sess = None
@@ -95,7 +112,8 @@ class DAPL :
 
 	def network_func(self) :
 
-		input_tensor = self.X
+		input_tensor = self.input_X
+		#input_tensor = self.X
 
 		for i in self.biases :
 			print("weights: ", i)
@@ -122,15 +140,15 @@ class DAPL :
 		#self.loss=tf.reduce_mean(tf.square(recons_X-self.X))
 		self.loss=tf.sqrt(tf.reduce_mean(tf.square(self.X_mask_inverse*(recons_X-self.X))))
 
-	def optimizer_func(self) :
+	def optimizer_func(self, optimizer) :
 
-		self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
+		self.optimizer = optimizer(self.learning_rate).minimize(self.loss)
 
 	def train(self) :
 
 		recons_X = self.network_func()
 		self.loss_func(self.X, recons_X)
-		self.optimizer_func()
+		self.optimizer_func(tf.train.AdamOptimizer)
 
 		init_op = tf.global_variables_initializer()
 
@@ -146,12 +164,14 @@ class DAPL :
 				for i in range(total_batch) :
 
 					batch_x, batch_mask, batch_mask_inverse = self.Dataset.next_batch()
+					#print(batch_x.shape, batch_mask.shape)
+					corrupted_batch = np.asarray(batch_x)*np.asarray(batch_mask)
 
 					#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
 					#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
 
 
-					_, l = sess.run([self.optimizer, self.loss], feed_dict = {self.X : batch_x, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
+					_, l = sess.run([self.optimizer, self.loss], feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
 
 				 
 
