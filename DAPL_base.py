@@ -3,8 +3,27 @@ from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 import pandas as pd 
 import scipy.sparse as scp 
+import argparse
 
-#Used to manage datasets
+#--------------------------------------Command Line Argument------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument("--input_file")
+parser.add_argument("--set_mask", type = bool, default = False)
+parser.add_argument("--lr", type = float, default = 0.001)
+parser.add_argument("--epochs", type = int, default = 10)
+parser.add_argument("--batch_size", type = int , default = 150)
+parser.add_argument("--shape" , default  = '0,0' )
+parser.add_argument("--missing_perc", type = float , default = 0.01)
+parser.add_argument("--save_results", type = bool, default = False)
+
+args = parser.parse_args()
+
+#modification of cmd args
+args.shape = tuple(list(map(int, args.shape.split(',')))) 
+#-----------------------------------------------------------------------------------------------
+
+
+#Used to manage datasets and result data
 class DataHandler :
 
 	def __init__(self, directory_path, mask_given  = False):
@@ -242,11 +261,11 @@ class DAPL :
 def main() :
 
 	#mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-	Dataset = DataHandler('./Experiment/BioDataset1', mask_given = False)
-	model = DAPL(Dataset = Dataset, learning_rate = 0.001 , epochs = 10 , batch_size = 150, shape = (None,1200), missing_perc = 0.01)
+	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
+	model = DAPL(Dataset = Dataset, learning_rate = args.lr , epochs = args.epochs , batch_size = args.batch_size, shape = args.shape, missing_perc = args.missing_perc)
 
 	model.network_weights_biases([1200,600,300,600,1200])
-	model.train(save_results = True)
+	model.train(save_results = args.save_results)
 
 main()
 
