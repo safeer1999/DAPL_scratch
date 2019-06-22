@@ -15,16 +15,19 @@ class DataHandler :
 		else :
 			self.mask = None
 
+	#-----------------------------------------BATCH CONTROL----------------------------
 
 	def batch_init(self, batch_size) : #initialize dataset batch control variables
 		self.batch_beg = 0
 		self.batch_end = 0
 		self.batch_size = 0
 
-		self.batch_end += batch_size
+		self.batch_end += self.R.shape[0]%batch_size
 		self.batch_size  = batch_size
 
+		num_batches = self.get_num_batch()
 
+		return num_batches
 
 
 
@@ -37,27 +40,61 @@ class DataHandler :
 
 		return batch_R
 
-	def next_batch_mask(self, missing_perc = 0.1) :
+	def next_batch_mask(self, row_size = 0, missing_perc = 0.1) :#produce batch for mask matrix or produces a random generated batch using missing_perc
 
 		if self.mask_given :
 			batch_mask = self.mask[self.batch_beg:self.batch_end, :]
 			#print('batch_mask.shape: ',batch_mask.shape)
 
 		else :
-			batch_mask = np.random.binomial(1, missing_perc, size=self.batch_size*self.R.shape[1]).reshape(self.batch_size, self.R.shape[1])
+			#print('row_size', row_size)
+			batch_mask = np.random.binomial(1, missing_perc, size=row_size*self.R.shape[1]).reshape(row_size, self.R.shape[1])
 
 		batch_mask_inverse = np.where(batch_mask , 0 , 1)
 
 		return batch_mask,batch_mask_inverse
 
-	def inc_batch(self) :
+	def inc_batch(self) : #used for iterating through the datatset batchwise
 
-		self.batch_beg+=self.batch_size
+		#print('self.batch_beg', self.batch_beg)
+		#print('self.batch_end', self.batch_end)
+
+		self.batch_beg =self.batch_end
 		self.batch_end+=self.batch_size
 
-	def get_num_batch(self) :
+	def get_num_batch(self) :#returns no of batches in the dataset
 
-		return int(self.R.shape[0]/self.batch_size)
+		num_batches = self.R.shape[0]//self.batch_size
+
+		num_final_batch = self.R.shape[0] - num_batches*self.batch_size #number of instances in the final batch if the row size is not a perfect multiple of batch_size
+
+		if num_final_batch != 0 :
+			num_batches+=1
+
+		return num_batches
+
+
+	def compile_batches(self,batch, full_mat): #combines batches to produce the full matrix
+
+		full_mat = np.append(full_mat,batch, axis = 0)
+
+		return full_mat
+		
+
+	#--------------------------------------------------------------------------------
+
+	#--------------------------------SAVE DATA----------------------------------------
+
+	def save_matrix(self,file_path, matrix) :#save the matrix as .npy file in the file_path
+		np.save(file_path,matrix)
+
+	def create_dir(self,dir_path) : 
+		if not os.path.exists(dir_path) :
+			os.mkdir(dir_path)
+
+	#----------------------------------------------------------------------------------
+
+
 
 		
 
@@ -149,11 +186,13 @@ class DAPL :
 
 		self.optimizer = optimizer(self.learning_rate).minimize(self.loss)
 
-	def train(self) :
+	def train(self, save_results = False, results_filePath = './results') :
 
 		recons_X = self.network_func()
 		self.loss_func(self.X, recons_X)
 		self.optimizer_func(tf.train.AdamOptimizer)
+
+		full_recons_matrix = np.empty(shape = (0,self.shape[1]))
 
 		init_op = tf.global_variables_initializer()
 
@@ -164,12 +203,15 @@ class DAPL :
 			for epoch in range(self.epochs) :
 
 				l = 0
-				self.Dataset.batch_init(batch_size = self.batch_size)
-				total_batch = self.Dataset.get_num_batch()
+				total_batch = self.Dataset.batch_init(batch_size = self.batch_size)
+
+				#print("total_batch: ", total_batch)
 				for i in range(total_batch) :
 
+					row_size = self.Dataset.batch_end - self.Dataset.batch_beg
+
 					batch_x = self.Dataset.next_batch()
-					batch_mask, batch_mask_inverse = self.Dataset.next_batch_mask(self.missing_perc)
+					batch_mask, batch_mask_inverse = self.Dataset.next_batch_mask(row_size, self.missing_perc)
 					self.Dataset.inc_batch()
 
 					#print(batch_x.shape, batch_mask.shape)
@@ -179,14 +221,22 @@ class DAPL :
 					#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
 
 
-					_, l = sess.run([self.optimizer, self.loss], feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
-					recons_batch = sess.run(recons_X,feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
 
-					print(batch_x)
+					_, l, recons_batch = sess.run([self.optimizer, self.loss, recons_X], feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
+					
+					
+					if epoch == (self.epochs-1) :
+						full_recons_matrix = self.Dataset.compile_batches(recons_batch, full_recons_matrix)
+						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)
+
 
 				 
 
 				print("Epoch: ", epoch + 1, "cost: ", "{:.5}".format(l))
+
+		self.Dataset.save_matrix(results_filePath, full_recons_matrix)
+
+
 
 
 def main() :
@@ -196,7 +246,7 @@ def main() :
 	model = DAPL(Dataset = Dataset, learning_rate = 0.001 , epochs = 10 , batch_size = 150, shape = (None,1200), missing_perc = 0.01)
 
 	model.network_weights_biases([1200,600,300,600,1200])
-	model.train()
+	model.train(save_results = True)
 
 main()
 
