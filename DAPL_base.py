@@ -67,9 +67,10 @@ class DataHandler :
 
 		else :
 			#print('row_size', row_size)
-			batch_mask = np.random.binomial(1, missing_perc, size=row_size*self.R.shape[1]).reshape(row_size, self.R.shape[1])
+			batch_mask_inverse = np.random.binomial(1, missing_perc, size=row_size*self.R.shape[1]).reshape(row_size, self.R.shape[1])
 
-		batch_mask_inverse = np.where(batch_mask , 0 , 1)
+		batch_mask = np.where(batch_mask_inverse , 0 , 1)
+
 
 		return batch_mask,batch_mask_inverse
 
@@ -205,13 +206,14 @@ class DAPL :
 
 		self.optimizer = optimizer(self.learning_rate).minimize(self.loss)
 
-	def train(self, save_results = False, results_filePath = './results') :
+	def train(self, save_results = False, results_filePath = './results', mask_file_path = './mask') :
 
 		recons_X = self.network_func()
 		self.loss_func(self.X, recons_X)
 		self.optimizer_func(tf.train.AdamOptimizer)
 
 		full_recons_matrix = np.empty(shape = (0,self.shape[1]))
+		full_mask_matrix = np.empty(shape = (0,self.shape[1]))
 
 		init_op = tf.global_variables_initializer()
 
@@ -246,6 +248,7 @@ class DAPL :
 					
 					if epoch == (self.epochs-1) :
 						full_recons_matrix = self.Dataset.compile_batches(recons_batch, full_recons_matrix)
+						full_mask_matrix = self.Dataset.compile_batches(batch_mask, full_mask_matrix)
 						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)
 
 
@@ -253,7 +256,12 @@ class DAPL :
 
 				print("Epoch: ", epoch + 1, "cost: ", "{:.5}".format(l))
 
-		self.Dataset.save_matrix(results_filePath, full_recons_matrix)
+		if save_results :
+			self.Dataset.save_matrix(results_filePath, full_recons_matrix)
+			self.Dataset.save_matrix(mask_file_path, full_mask_matrix)
+
+
+
 
 
 

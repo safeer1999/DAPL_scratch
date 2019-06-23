@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dataset")
 parser.add_argument("--recons")
 parser.add_argument("--mask")
+parser.add_argument('--result_file_path' , type = str , default = './output_results.csv')
 
 args = parser.parse_args()
 
@@ -24,5 +25,11 @@ recons_masked = recons[mask == 0]
 
 correl = np.corrcoef(R_masked, recons_masked)[0,1]
 RMSE = sqrt(mean_squared_error(R_masked, recons_masked))
+
+df_results = pd.DataFrame({'R' : list(R_masked), 'recons' : list(recons_masked) , 'Correlation' : [correl]*R_masked.shape[0], 'RMSE' : [RMSE]*R_masked.shape[0]})
+
+df_results.iloc[1:, [2,3]] = np.nan
+
+df_results.to_csv(args.result_file_path)
 
 
