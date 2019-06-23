@@ -340,12 +340,14 @@ class DAPL :
 				print('\n')
 
 
-			test_loss,test_recons = self.test(test_set,sess)
+			test_loss,test_recons, test_mask = self.test(test_set,sess)
 
 
 		if save_results :
 			self.Dataset.save_matrix(results_filePath + '/recons', full_recons_matrix)
 			self.Dataset.save_matrix(mask_filePath +'/mask', full_mask_matrix)
+			self.Dataset.save_matrix(results_filePath + '/test', test_recons)
+			self.Dataset.save_matrix(mask_filePath + '/test_mask',test_mask)
 
 		print("Test Loss :", test_loss)
 
@@ -356,13 +358,14 @@ class DAPL :
 		loss = None
 		recons = None
 
-		test_mask = np.random.binomial(1, self.missing_perc, size=dataset.shape[0]*dataset.shape[1]).reshape(dataset.shape[0], dataset.shape[1])
+		test_mask_inverse = np.random.binomial(1, self.missing_perc, size=dataset.shape[0]*dataset.shape[1]).reshape(dataset.shape[0], dataset.shape[1])
+		test_mask = np.where(test_mask_inverse , 0 , 1)
 
 		corrupted_set = np.asarray(dataset)*np.asarray(test_mask)
 
 		loss,recons = sess.run([self.loss, self.recons_X], feed_dict = {self.X : dataset, self.input_X : corrupted_set, self.X_mask_inverse : test_mask})
 
-		return loss, recons
+		return loss, recons, test_mask
 
 
 
