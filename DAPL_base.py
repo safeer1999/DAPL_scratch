@@ -15,6 +15,7 @@ parser.add_argument("--batch_size", type = int , default = 150)
 parser.add_argument("--shape" , default  = '0,0' )
 parser.add_argument("--missing_perc", type = float , default = 0.01)
 parser.add_argument("--save_results", type = bool, default = False)
+parser.add_argument("--output_filePath")
 
 args = parser.parse_args()
 
@@ -112,11 +113,12 @@ class DataHandler :
 		if not os.path.exists(dir_path) :
 			os.mkdir(dir_path)
 
+	def save_to_file() :
+		pass
+
+
 	#----------------------------------------------------------------------------------
 
-
-
-		
 
 
 
@@ -143,6 +145,27 @@ class DAPL :
 		#Session variables
 		self.sess = None
 		self.init_op = tf.global_variables_initializer()
+
+
+	def netBuild(self,featureNum = 0 , reduct_fact = 2, numLayers = 2) :
+
+	    network = []
+
+	    numNodes = featureNum
+
+	    for i in range(numLayers) :
+
+	        network.append(numNodes)
+
+	        numNodes = numNodes//2
+
+	    for i in range(numLayers) :
+	        network.append(numNodes)
+	        numNodes = numNodes*2
+
+	    network.append(featureNum)
+
+	    self.network_weights_biases(network)
 
 
 	def network_weights_biases(self,num_nodes) :
@@ -206,7 +229,7 @@ class DAPL :
 
 		self.optimizer = optimizer(self.learning_rate).minimize(self.loss)
 
-	def train(self, save_results = False, results_filePath = './results', mask_file_path = './mask') :
+	def train(self, save_results = False, results_filePath = '.', mask_filePath = '.') :
 
 		recons_X = self.network_func()
 		self.loss_func(self.X, recons_X)
@@ -257,8 +280,8 @@ class DAPL :
 				print("Epoch: ", epoch + 1, "cost: ", "{:.5}".format(l))
 
 		if save_results :
-			self.Dataset.save_matrix(results_filePath, full_recons_matrix)
-			self.Dataset.save_matrix(mask_file_path, full_mask_matrix)
+			self.Dataset.save_matrix(results_filePath + '/recons', full_recons_matrix)
+			self.Dataset.save_matrix(mask_filePath +'/mask', full_mask_matrix)
 
 
 
@@ -272,8 +295,9 @@ def main() :
 	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
 	model = DAPL(Dataset = Dataset, learning_rate = args.lr , epochs = args.epochs , batch_size = args.batch_size, shape = args.shape, missing_perc = args.missing_perc)
 
-	model.network_weights_biases([1200,600,300,600,1200])
-	model.train(save_results = args.save_results)
+	#model.network_weights_biases([1200,600,300,600,1200])
+	model.netBuild(featureNum = args.shape[1])
+	model.train(save_results = args.save_results, results_filePath = args.output_filePath, mask_filePath = args.output_filePath)
 
 main()
 
