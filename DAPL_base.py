@@ -13,7 +13,7 @@ parser.add_argument("--lr", type = float, default = 0.001)
 parser.add_argument("--epochs", type = int, default = 10)
 parser.add_argument("--batch_size", type = int , default = 100)
 parser.add_argument("--shape" , default  = '0,0' )
-parser.add_argument("--missing_perc", type = float , default = 0.01)
+parser.add_argument("--missing_perc", type = float , default = 1)
 parser.add_argument("--save_results", type = bool, default = False)
 parser.add_argument("--output_filePath")
 
@@ -21,6 +21,7 @@ args = parser.parse_args()
 
 #modification of cmd args
 args.shape = tuple(list(map(int, args.shape.split(',')))) 
+args.missing_perc/=100.0
 #-----------------------------------------------------------------------------------------------
 
 
