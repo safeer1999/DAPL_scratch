@@ -1,5 +1,4 @@
 import tensorflow as tf 
-from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 import pandas as pd 
 import scipy.sparse as scp 
@@ -16,6 +15,8 @@ parser.add_argument("--shape" , default  = '0,0' )
 parser.add_argument("--missing_perc", type = float , default = 1)
 parser.add_argument("--save_results", type = bool, default = False)
 parser.add_argument("--output_filePath")
+parser.add_argument("--save_model", type = bool, default = False)
+parser.add_argument("--model_dir")
 
 args = parser.parse_args()
 
@@ -37,31 +38,20 @@ class DataHandler :
 			self.mask = None
 
 
-	def split(self,val_perc = 0.1, test_perc = 0.2):
+	def split(self,dataset, val_perc = 0.1, test_perc = 0.2):
 		
-		val_size = int(val_perc*self.R.shape[0])
-		test_size = int(test_perc*self.R.shape[0])
-		train_size = self.R.shape[0] - (val_size+test_size)
+		val_size = int(val_perc*dataset.shape[0])
+		test_size = int(test_perc*dataset.shape[0])
+		train_size = dataset.shape[0] - (val_size+test_size)
 
-		train_set = self.R[:train_size,:]
-		val_set = self.R[train_size : train_size + val_size, :]
-		test_set = self.R[train_size + val_size : , :]
+		train_set = dataset[:train_size,:]
+		val_set = dataset[train_size : train_size + val_size, :]
+		test_set = dataset[train_size + val_size : , :]
 
 		return train_set, val_set, test_set
 
 	#-----------------------------------------BATCH CONTROL----------------------------
 
-	'''def batch_init(self, batch_size) : #initialize dataset batch control variables
-		self.batch_beg = 0
-		self.batch_end = 0
-		self.batch_size = 0
-
-		self.batch_end += self.R.shape[0]%batch_size
-		self.batch_size  = batch_size
-
-		num_batches = self.get_num_batch()
-
-		return num_batches'''
 
 	def batch_init(self, dataset, batch_size) : #initialize dataset batch control variables
 		batch_beg = 0
@@ -84,17 +74,17 @@ class DataHandler :
 
 		return batch_R
 
-	def next_batch_mask(self, batch_beg, batch_end, row_size = 0, missing_perc = 0.1) :#produce batch for mask matrix or produces a random generated batch using missing_perc
+	def next_batch_mask(self, batch_beg, batch_end, row_size = 0, missing_perc = 0.1, dataset = None) :#produce batch for mask matrix or produces a random generated batch using missing_perc
 
 		if self.mask_given :
-			batch_mask = self.mask[batch_beg:batch_end, :]
+			batch_mask = dataset[batch_beg:batch_end, :]
+			batch_mask_inverse = np.where(batch_mask , 0 , 1)
 			#print('batch_mask.shape: ',batch_mask.shape)
 
 		else :
 			#print('row_size', row_size)
 			batch_mask_inverse = np.random.binomial(1, missing_perc, size=row_size*self.R.shape[1]).reshape(row_size, self.R.shape[1])
-
-		batch_mask = np.where(batch_mask_inverse , 0 , 1)
+			batch_mask = np.where(batch_mask_inverse , 0 , 1)
 
 
 		return batch_mask,batch_mask_inverse
@@ -172,6 +162,9 @@ class DAPL :
 		self.sess = None
 		self.init_op = tf.global_variables_initializer()
 
+		#Saving Model
+		self.saver = None
+
 
 #----------------------------------------------NEURAL NETWORK--------------------------------------------------------------------------
 
@@ -224,6 +217,7 @@ class DAPL :
 
 
 
+
 	def network_func(self) :
 
 		input_tensor = self.input_X
@@ -258,16 +252,31 @@ class DAPL :
 
 		self.optimizer = optimizer(self.learning_rate).minimize(self.loss)
 
-
-#----------------------------------------------------------------------------------------------------------------------------------------
-
-	def train(self, save_results = False, results_filePath = '.', mask_filePath = '.', batch_size = None) : 
+	def define_network(self) :
 
 		self.recons_X = self.network_func()
 		self.loss_func(self.X, self.recons_X)
 		self.optimizer_func(tf.train.AdamOptimizer)
 
-		train_set, val_set, test_set = self.Dataset.split()
+
+#----------------------------------------------------------------------------------------------------------------------------------------
+
+	def train(self, save_results = False, results_filePath = '.', mask_filePath = '.', batch_size = None, save_model = False) : 
+
+
+		#Saving the model
+		self.saver = tf.train.Saver()
+
+		#Split dataset into training validation and testing
+		train_set, val_set, test_set = self.Dataset.split(self.Dataset.R)
+
+		if self.Dataset.mask_given :
+			train_mask, val_mask, test_mask = self.Dataset.split(self.Dataset.mask)
+			test_mask_inverse = np.where(test_mask , 0 , 1)
+
+		else :
+			test_mask_inverse = np.random.binomial(1, self.missing_perc, size=dataset.shape[0]*dataset.shape[1]).reshape(dataset.shape[0], dataset.shape[1])
+			test_mask = np.where(test_mask_inverse , 0 , 1)
 
 		full_recons_matrix = np.empty(shape = (0,self.shape[1]))
 		full_mask_matrix = np.empty(shape = (0,self.shape[1]))
@@ -295,7 +304,7 @@ class DAPL :
 					row_size = batch_end_train - batch_beg_train
 
 					batch_x = self.Dataset.next_batch(train_set, batch_beg_train, batch_end_train)
-					batch_mask, batch_mask_inverse = self.Dataset.next_batch_mask(batch_beg_train, batch_end_train, row_size, self.missing_perc)
+					batch_mask, batch_mask_inverse = self.Dataset.next_batch_mask(batch_beg_train, batch_end_train, row_size, self.missing_perc, dataset = train_mask)
 					batch_beg_train, batch_end_train = self.Dataset.inc_batch(batch_beg_train, batch_end_train, train_batch_size)
 
 					#print('training: ', batch_x.shape, batch_mask.shape)
@@ -314,7 +323,7 @@ class DAPL :
 					row_size_val = batch_end_val - batch_beg_val
 
 					batch_x_val = self.Dataset.next_batch(val_set, batch_beg_val, batch_end_val)
-					batch_mask_val, batch_mask_inverse_val = self.Dataset.next_batch_mask(batch_beg_val, batch_end_val, row_size_val, self.missing_perc)
+					batch_mask_val, batch_mask_inverse_val = self.Dataset.next_batch_mask(batch_beg_val, batch_end_val, row_size_val, self.missing_perc,dataset = val_mask)
 					batch_beg_val, batch_end_val = self.Dataset.inc_batch(batch_beg_val, batch_end_val, val_batch_size)
 
 					#print('validation: ', batch_x_val.shape, batch_mask_val.shape)
@@ -340,8 +349,12 @@ class DAPL :
 				print('cost_val: ',"{:.5}".format(l_val))
 				print('\n')
 
+			if save_model :
+				self.saver.save(sess, args.model_dir)
 
-			test_loss,test_recons, test_mask = self.test(test_set,sess)
+
+			test_loss,test_recons= self.test(test_set,sess, test_mask, test_mask_inverse)
+
 
 
 		if save_results :
@@ -354,19 +367,21 @@ class DAPL :
 
 
 
-	def test(self,dataset,sess):
+	def test(self,dataset,sess, test_mask, test_mask_inverse):
 
 		loss = None
 		recons = None
 
-		test_mask_inverse = np.random.binomial(1, self.missing_perc, size=dataset.shape[0]*dataset.shape[1]).reshape(dataset.shape[0], dataset.shape[1])
-		test_mask = np.where(test_mask_inverse , 0 , 1)
+		print('\ntest dataset :', dataset.shape, test_mask.shape,'\n')
+
+		#test_mask_inverse = np.random.binomial(1, self.missing_perc, size=dataset.shape[0]*dataset.shape[1]).reshape(dataset.shape[0], dataset.shape[1])
+		#test_mask = np.where(test_mask_inverse , 0 , 1)
 
 		corrupted_set = np.asarray(dataset)*np.asarray(test_mask)
 
 		loss,recons = sess.run([self.loss, self.recons_X], feed_dict = {self.X : dataset, self.input_X : corrupted_set, self.X_mask_inverse : test_mask})
 
-		return loss, recons, test_mask
+		return loss, recons
 
 
 
@@ -382,9 +397,11 @@ def main() :
 
 	model = DAPL(Dataset = Dataset, learning_rate = args.lr , epochs = args.epochs , missing_perc = args.missing_perc)
 	model.netBuild(featureNum = Dataset.R.shape[1])
-	model.train(save_results = args.save_results, results_filePath = args.output_filePath, mask_filePath = args.output_filePath, batch_size = args.batch_size)
+	model.define_network()
+	model.train(save_results = args.save_results, results_filePath = args.output_filePath, mask_filePath = args.output_filePath, batch_size = args.batch_size, save_model = args.save_model)
 
-main()
+if __name__ == '__main__':
+	main()
 
 
 
