@@ -275,6 +275,8 @@ class DAPL :
 			test_mask_inverse = np.where(test_mask , 0 , 1)
 
 		else :
+			train_mask = None
+			val_mask = None
 			test_mask_inverse = np.random.binomial(1, self.missing_perc, size=test_set.shape[0]*test_set.shape[1]).reshape(test_set.shape[0], test_set.shape[1])
 			test_mask = np.where(test_mask_inverse , 0 , 1)
 
