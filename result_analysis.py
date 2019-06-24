@@ -10,13 +10,40 @@ from sklearn.metrics import mean_squared_error
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset")
+parser.add_argument('--dataset_type', default = 'R')
 parser.add_argument("--recons")
 parser.add_argument("--mask")
 parser.add_argument('--result_file_path' , type = str , default = './output_results.csv')
 
 args = parser.parse_args()
 
-R = scp.load_npz(args.dataset).todense()
+
+def split(dataset,val_perc = 0.1, test_perc = 0.2):
+	
+	val_size = int(val_perc*dataset.shape[0])
+	test_size = int(test_perc*dataset.shape[0])
+	train_size = dataset.shape[0] - (val_size+test_size)
+
+	train_set = dataset[:train_size,:]
+	val_set = dataset[train_size : train_size + val_size, :]
+	test_set = dataset[train_size + val_size : , :]
+
+	return train_set, val_set, test_set
+
+
+dataset =  scp.load_npz(args.dataset).todense()
+train_set, val_set, test_set = split(dataset)
+
+if args.dataset_type == 'train' :
+	R = train_set
+
+elif args.dataset_type == 'test' :
+	R = test_set
+
+else :
+	R = dataset
+
+
 recons = np.load(args.recons)
 mask = np.load(args.mask)
 
