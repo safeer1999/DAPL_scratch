@@ -35,7 +35,7 @@ class DAPL :
 #----------------------------------------------NEURAL NETWORK--------------------------------------------------------------------------
 
 
-	def netBuild(self,featureNum = 0 , reduct_fact = 2, numLayers = 2) :
+	def netBuild(self,featureNum = 0 , reduct_fact = 2, numLayers = 2, load_model_bool = False) :
 
 	    network = []
 
@@ -53,7 +53,11 @@ class DAPL :
 
 	    network.append(featureNum)
 
-	    self.network_weights_biases(network)
+	    if load_model_bool :
+	    	self.restore_network_weights_biases(network)
+
+	    else :
+		    self.network_weights_biases(network)
 
 
 	def network_weights_biases(self,num_nodes) :
@@ -127,7 +131,7 @@ class DAPL :
 
 #----------------------------------------------------------------------------------------------------------------------------------------
 
-	def train(self, Dataset , save_results = False, results_filePath = '.', mask_filePath = '.', batch_size = None, save_model = False) : 
+	def train(self, Dataset , save_results = False, results_filePath = '.', mask_filePath = '.', batch_size = None, save_model_bool = False, model_dir = None) : 
 
 
 		#Saving the model
@@ -208,20 +212,19 @@ class DAPL :
 					if epoch == (self.epochs-1) :
 						full_recons_matrix = Dataset.compile_batches(recons_batch, full_recons_matrix)
 						full_mask_matrix = Dataset.compile_batches(batch_mask, full_mask_matrix)
-						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)
-
-
+						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)			
 				 
 
 				print("Epoch: ", epoch + 1, "\ncost: ", "{:.5}".format(l))
 				print('cost_val: ',"{:.5}".format(l_val))
 				print('\n')
 
-			if save_model :
-				self.saver.save(sess, args.model_dir)
 
 
-			test_loss,test_recons= self.test(test_set,sess, test_mask, test_mask_inverse)
+			if save_model_bool :
+				self.save_model(sess, model_dir)
+
+			#test_loss,test_recons= self.test(test_set,sess, test_mask, test_mask_inverse)
 
 
 
@@ -231,7 +234,7 @@ class DAPL :
 			Dataset.save_matrix(results_filePath + '/test', test_recons)
 			Dataset.save_matrix(mask_filePath + '/test_mask',test_mask)
 
-		print("Test Loss :", test_loss)
+		#print("Test Loss :", test_loss)
 
 
 
@@ -240,7 +243,7 @@ class DAPL :
 		loss = None
 		recons = None
 
-		print('\ntest dataset :', dataset.shape, test_mask.shape,'\n')
+		#print('\ntest dataset :', dataset.shape, test_mask.shape,'\n')
 
 		#test_mask_inverse = np.random.binomial(1, self.missing_perc, size=dataset.shape[0]*dataset.shape[1]).reshape(dataset.shape[0], dataset.shape[1])
 		#test_mask = np.where(test_mask_inverse , 0 , 1)
@@ -250,3 +253,47 @@ class DAPL :
 		loss,recons = sess.run([self.loss, self.recons_X], feed_dict = {self.X : dataset, self.input_X : corrupted_set, self.X_mask_inverse : test_mask})
 
 		return loss, recons
+
+	#------------------------------------------------------------SAVE AND RESTORE MODEL--------------------------------------------------
+
+	def save_model(self,sess, model_dir = None) :
+
+		self.saver.save(sess, model_dir)
+
+	def restore_model(self,sess,model_dir) :
+
+		tf.reset_default_graph()
+		loader = tf.train.import_meta_graph(model_dir + '.meta')
+		self.graph = tf.get_default_graph()
+
+		loader.restore(sess,model_dir)
+
+
+		self.graph = tf.get_default_graph()
+
+	def restore_network_weights_biases(self,num_nodes) :
+
+		self.weights = []
+		self.biases = []
+
+		#initializer=tf.variance_scaling_initializer()
+
+			
+		for i in range(len(num_nodes)-1) :
+
+			axis_0 = num_nodes[i]
+			axis_1 = num_nodes[i+1]
+
+			#print('-----------------------------------------------------------')
+			#print('axis_0: ', axis_0,"  axis_1: ", axis_1)
+			#print('-----------------------------------------------------------')
+
+			W = self.graph.get_tensor_by_name('W' + str(i) + ':0')
+			b = self.graph.get_tensor_by_name('b' + str(i) + ':0')
+
+			self.weights.append(W)
+			self.biases.append(b)
+
+
+
+	#------------------------------------------------------------------------------------------------------------------------------------
