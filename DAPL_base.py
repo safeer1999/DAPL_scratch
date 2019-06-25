@@ -4,6 +4,9 @@ import pandas as pd
 import scipy.sparse as scp 
 import argparse
 
+from DAPL import DAPL
+from DataHandler import DataHandler
+
 #--------------------------------------Command Line Argument------------------------------------
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_file")
@@ -27,7 +30,7 @@ args.missing_perc/=100.0
 
 
 #Used to manage datasets and result data
-class DataHandler :
+'''class DataHandler :
 
 	def __init__(self, directory_path, mask_given  = False):
 		self.R = scp.load_npz(directory_path +  '/' + 'rating.npz').todense()
@@ -142,8 +145,6 @@ class DAPL :
 
 	def __init__(self, Dataset = None , learning_rate = 0.1 , epochs = 10 , batch_size = 20, missing_perc = 0.1) :
 
-		#Datasets
-		self.Dataset = Dataset
 
 		#Parameters
 		self.learning_rate = learning_rate
@@ -385,7 +386,7 @@ class DAPL :
 
 		return loss, recons
 
-
+'''
 
 
 
@@ -397,17 +398,13 @@ def main() :
 	#mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
 
-	model = DAPL(Dataset = Dataset, learning_rate = args.lr , epochs = args.epochs , missing_perc = args.missing_perc)
+	model = DAPL(learning_rate = args.lr , epochs = args.epochs , missing_perc = args.missing_perc, shape = Dataset.R.shape)
 	model.netBuild(featureNum = Dataset.R.shape[1])
 	model.define_network()
-	model.train(save_results = args.save_results, results_filePath = args.output_filePath, mask_filePath = args.output_filePath, batch_size = args.batch_size, save_model = args.save_model)
+	model.train(Dataset, save_results = args.save_results, results_filePath = args.output_filePath, mask_filePath = args.output_filePath, batch_size = args.batch_size, save_model = args.save_model)
 
 if __name__ == '__main__':
 	main()
-
-
-
-
 
 
 
