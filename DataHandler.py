@@ -113,3 +113,14 @@ class DataHandler :
 
 
 	#----------------------------------------------------------------------------------
+	
+	#------------------------------EVALUATION------------------------------------------
+
+	def correl(self, y, y_pred):
+		
+		y = np.squeeze(np.asarray(y))
+		y_pred = np.squeeze(np.asarray(y_pred))
+
+		correl_val = np.corrcoef(y, y_pred)[0,1]
+
+		return correl_val

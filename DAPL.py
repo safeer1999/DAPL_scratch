@@ -167,6 +167,11 @@ class DAPL :
 
 			sess.run(init_op)
 
+			#Variables for finding the best model variables
+			max_acc = 0
+			current_acc = 0
+			max_acc_epoch = 0
+
 			for epoch in range(self.epochs) :
 
 				l = 0
@@ -175,6 +180,7 @@ class DAPL :
 				val_batch_size = int(batch_size*(val_set.shape[0]*1.0 / train_set.shape[0]))
 				batch_beg_train, batch_end_train, total_batch_train = Dataset.batch_init(dataset = train_set, batch_size = train_batch_size) #for training
 				batch_beg_val, batch_end_val, total_batch_val = Dataset.batch_init(dataset = train_set, batch_size = val_batch_size) #for validation
+
 
 				#print("total_batch: ", total_batch)
 				for i in range(total_batch_train) :
@@ -220,17 +226,33 @@ class DAPL :
 					if epoch == (self.epochs-1) :
 						full_recons_matrix = Dataset.compile_batches(recons_batch, full_recons_matrix)
 						full_mask_matrix = Dataset.compile_batches(batch_mask, full_mask_matrix)
-						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)			
+						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)
+
+
+				#Evaluating correlation of validation set output
+				#Used to chose the best model parameter
+				batch_x_val_masked = batch_x_val[batch_mask_val == 0]
+				recons_batch_val_masked = recons_batch_val[batch_mask_val == 0]
+				current_acc = Dataset.correl(batch_x_val_masked, recons_batch_val_masked)
+
+				if current_acc >= max_acc :
+					max_acc = current_acc
+					max_acc_epoch = epoch
+
+					if save_model_bool :
+						self.save_model(sess, model_dir)
+						print('\nSaving Model at Epoch: ',epoch)
 				 
 
 				print("Epoch: ", epoch + 1, "\ncost: ", "{:.5}".format(l))
 				print('cost_val: ',"{:.5}".format(l_val))
+				print("Accuracy: ",current_acc)
 				print('\n')
 
 
 
-			if save_model_bool :
-				self.save_model(sess, model_dir)
+
+			print("Highest Accuracy {} at Epoch {}".format(max_acc,max_acc_epoch))
 
 			#test_loss,test_recons= self.test(test_set,sess, test_mask, test_mask_inverse)
 
