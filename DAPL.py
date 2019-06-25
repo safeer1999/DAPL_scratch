@@ -17,6 +17,18 @@ class DAPL :
 		self.shape = shape # to be inititialized in while network building
 		self.missing_perc = missing_perc
 
+		#Session variables
+		self.sess = None
+		
+
+		#Saving Model
+		self.saver = None
+
+
+#----------------------------------------------NEURAL NETWORK--------------------------------------------------------------------------
+
+
+	def init_tensors(self) :
 
 		#Training Paceholders
 		self.X = tf.placeholder(tf.float32, [None, self.shape[1]])
@@ -24,15 +36,7 @@ class DAPL :
 		self.X_mask_inverse = tf.placeholder(tf.float32, [None, self.shape[1]])
 		self.input_X = tf.placeholder(tf.float32, [None, self.shape[1]])
 
-		#Session variables
-		self.sess = None
 		self.init_op = tf.global_variables_initializer()
-
-		#Saving Model
-		self.saver = None
-
-
-#----------------------------------------------NEURAL NETWORK--------------------------------------------------------------------------
 
 
 	def netBuild(self,featureNum = 0 , reduct_fact = 2, numLayers = 2, load_model_bool = False) :
@@ -122,11 +126,15 @@ class DAPL :
 
 		self.optimizer = optimizer(self.learning_rate).minimize(self.loss)
 
-	def define_network(self) :
+	def define_network(self, mode = 'train') :
 
 		self.recons_X = self.network_func()
 		self.loss_func(self.X, self.recons_X)
-		self.optimizer_func(tf.train.AdamOptimizer)
+		#print('\n\n')
+
+		if mode == 'train' :# weights are only optimised during training
+			self.optimizer_func(tf.train.AdamOptimizer)
+
 
 
 #----------------------------------------------------------------------------------------------------------------------------------------
@@ -135,7 +143,7 @@ class DAPL :
 
 
 		#Saving the model
-		self.saver = tf.train.Saver()
+		self.saver = tf.train.Saver(self.weights + self.biases)
 
 		#Split dataset into training validation and testing
 		train_set, val_set, test_set = Dataset.split(Dataset.R)
@@ -260,13 +268,19 @@ class DAPL :
 
 		self.saver.save(sess, model_dir)
 
-	def restore_model(self,sess,model_dir) :
+
+	def restore_graph(self,model_dir) :
 
 		tf.reset_default_graph()
-		loader = tf.train.import_meta_graph(model_dir + '.meta')
+		self.loader = tf.train.import_meta_graph(model_dir + '.meta')
 		self.graph = tf.get_default_graph()
 
-		loader.restore(sess,model_dir)
+		self.sess = tf.Session()
+
+	def restore_model(self,sess,model_dir) :
+
+
+		self.loader.restore(sess,model_dir)
 
 
 		self.graph = tf.get_default_graph()

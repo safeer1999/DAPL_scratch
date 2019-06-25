@@ -33,18 +33,19 @@ def main() :
 	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
 
 	model = DAPL(shape = Dataset.R.shape)
-	model.sess = tf.Session()
+	model.restore_graph(args.model_dir)
+	model.init_tensors()
 	model.restore_model(model.sess,args.model_dir)
-	model.netBuild(featureNum = Dataset.R.shape, load_model_bool = True)
-	model.define_network()	
+	model.netBuild(featureNum = Dataset.R.shape[1], load_model_bool = True)
+	model.define_network(mode = 'test')	
 
-	#_,_,test_set = Dataset.split(Dataset.R)
-	#test_mask_inverse = np.random.binomial(1, 0.05, size=test_set.shape[0]*test_set.shape[1]).reshape(test_set.shape[0], test_set.shape[1]) #abstract random mask creation
-	#test_mask = np.where(test_mask_inverse , 0 , 1)
+	_,_,test_set = Dataset.split(Dataset.R)
+	test_mask_inverse = np.random.binomial(1, 0.05, size=test_set.shape[0]*test_set.shape[1]).reshape(test_set.shape[0], test_set.shape[1]) #abstract random mask creation
+	test_mask = np.where(test_mask_inverse , 0 , 1)
 
-	#loss,_ = model.test(test_set,model.sess,test_mask, test_mask_inverse )
+	loss,_ = model.test(test_set,model.sess,test_mask, test_mask_inverse )
 
-	#print("Loss: ", loss)
+	print("Loss: ", loss)
 
 
 

@@ -36,6 +36,7 @@ def main() :
 	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
 
 	model = DAPL(learning_rate = args.lr , epochs = args.epochs , missing_perc = args.missing_perc, shape = Dataset.R.shape)
+	model.init_tensors()
 	model.netBuild(featureNum = Dataset.R.shape[1])
 	model.define_network()
 	model.train(Dataset, save_results = args.save_results, results_filePath = args.output_filePath, mask_filePath = args.output_filePath, batch_size = args.batch_size, save_model_bool = args.save_model, model_dir = args.model_dir)
