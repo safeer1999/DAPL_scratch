@@ -161,7 +161,12 @@ class DAPL :
 		full_recons_matrix = np.empty(shape = (0,self.shape[1]))
 		full_mask_matrix = np.empty(shape = (0,self.shape[1]))
 
+		full_val_recons_matrix = np.empty(shape = (0,self.shape[1]))
+		full_val_mask_matrix = np.empty(shape = (0,self.shape[1]))
+
 		init_op = tf.global_variables_initializer()
+
+		terminal_output = open("epoch_dump.txt","w")#Writes all the contents displayed on the terminal to a dump file
 
 		with tf.Session() as sess :
 
@@ -228,6 +233,10 @@ class DAPL :
 						full_mask_matrix = Dataset.compile_batches(batch_mask, full_mask_matrix)
 						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)
 
+						full_val_recons_matrix = Dataset.compile_batches(recons_batch_val, full_val_recons_matrix)
+						full_val_mask_matrix = Dataset.compile_batches(batch_mask_val, full_val_mask_matrix)
+
+
 
 				#Evaluating correlation of validation set output
 				#Used to chose the best model parameter
@@ -241,7 +250,8 @@ class DAPL :
 
 					if save_model_bool :
 						self.save_model(sess, model_dir)
-						print('\nSaving Model at Epoch: ',epoch)
+						print('\nSaving Model at Epoch: ',epoch+1)
+						terminal_output.write('\nSaving Model at Epoch: '+str(epoch) + '\n')
 				 
 
 				print("Epoch: ", epoch + 1, "\ncost: ", "{:.5}".format(l))
@@ -249,20 +259,29 @@ class DAPL :
 				print("Accuracy: ",current_acc)
 				print('\n')
 
+				#Write above print values to epoch_dump.txt
+				terminal_output.write("Epoch: " +  str(epoch + 1)+ "\ncost: "+ "{:.5}\n".format(l))
+				terminal_output.write('cost_val: ' + "{:.5}\n".format(l_val))
+				terminal_output.write("Accuracy: " + str(current_acc) + '\n\n')
 
 
 
-			print("Highest Accuracy {} at Epoch {}".format(max_acc,max_acc_epoch))
+
+
+			print("Highest Accuracy {} at Epoch {}".format(max_acc,max_acc_epoch+1))
+			terminal_output.write("Highest Accuracy {} at Epoch {}\n".format(max_acc,max_acc_epoch+1))
 
 			#test_loss,test_recons= self.test(test_set,sess, test_mask, test_mask_inverse)
+
+		terminal_output.close()
 
 
 
 		if save_results :
 			Dataset.save_matrix(results_filePath + '/recons', full_recons_matrix)
 			Dataset.save_matrix(mask_filePath +'/mask', full_mask_matrix)
-			Dataset.save_matrix(results_filePath + '/test', test_recons)
-			Dataset.save_matrix(mask_filePath + '/test_mask',test_mask)
+			Dataset.save_matrix(results_filePath + '/val_recons', full_val_recons_matrix)
+			Dataset.save_matrix(mask_filePath +'/val_mask', full_val_mask_matrix)
 
 		#print("Test Loss :", test_loss)
 

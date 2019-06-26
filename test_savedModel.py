@@ -43,9 +43,14 @@ def main() :
 	test_mask_inverse = np.random.binomial(1, 0.05, size=test_set.shape[0]*test_set.shape[1]).reshape(test_set.shape[0], test_set.shape[1]) #abstract random mask creation
 	test_mask = np.where(test_mask_inverse , 0 , 1)
 
-	loss,_ = model.test(test_set,model.sess,test_mask, test_mask_inverse )
+	loss,recons_test = model.test(test_set,model.sess,test_mask, test_mask_inverse )
+
+	test_set_masked = test_set[test_mask == 0]
+	recons_test_masked = recons_test[test_mask == 0]
+	acc = Dataset.correl(test_set_masked, recons_test_masked)
 
 	print("Loss: ", loss)
+	print("Accuracy: ", acc)
 
 
 
