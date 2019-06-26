@@ -148,6 +148,10 @@ class DAPL :
 		#Split dataset into training validation and testing
 		train_set, val_set, test_set = Dataset.split(Dataset.R)
 
+		print("Train_Shape: ",train_set.shape)
+		print("Val_Shape: ",val_set.shape)
+		print("Test_Shape: ",test_set.shape)
+
 		if Dataset.mask_given :
 			train_mask, val_mask, test_mask = Dataset.split(Dataset.mask)
 			test_mask_inverse = np.where(test_mask , 0 , 1)
@@ -183,8 +187,9 @@ class DAPL :
 				#batch control variables
 				train_batch_size = batch_size
 				val_batch_size = int(batch_size*(val_set.shape[0]*1.0 / train_set.shape[0]))
+
 				batch_beg_train, batch_end_train, total_batch_train = Dataset.batch_init(dataset = train_set, batch_size = train_batch_size) #for training
-				batch_beg_val, batch_end_val, total_batch_val = Dataset.batch_init(dataset = train_set, batch_size = val_batch_size) #for validation
+				batch_beg_val, batch_end_val, total_batch_val = Dataset.batch_init(dataset = val_set, batch_size = val_batch_size) #for validation
 
 
 				#print("total_batch: ", total_batch)
@@ -217,7 +222,7 @@ class DAPL :
 					batch_mask_val, batch_mask_inverse_val = Dataset.next_batch_mask(batch_beg_val, batch_end_val, row_size_val, self.missing_perc,dataset = val_mask)
 					batch_beg_val, batch_end_val = Dataset.inc_batch(batch_beg_val, batch_end_val, val_batch_size)
 
-					#print('validation: ', batch_x_val.shape, batch_mask_val.shape)
+					#print('validation: ', batch_x_val.shape)
 					corrupted_batch_val = np.asarray(batch_x_val)*np.asarray(batch_mask_val)
 
 					#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
