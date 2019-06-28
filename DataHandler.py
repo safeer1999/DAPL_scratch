@@ -9,7 +9,7 @@ import scipy.sparse as scp
 class DataHandler :
 
 	def __init__(self, directory_path, mask_given  = False):
-		self.R = scp.load_npz(directory_path +  '/' + 'rating.npz').todense()
+		self.R = scp.load_npz(directory_path).todense()
 		self.mask_given = mask_given
 		if self.mask_given :
 			self.mask = scp.load_npz(directory_path +  '/' + 'train_mask.npz').todense()
@@ -28,6 +28,14 @@ class DataHandler :
 		test_set = dataset[train_size + val_size : , :]
 
 		return train_set, val_set, test_set
+
+
+	def get_mask_from_dataset(self, R) :
+
+	    mask = np.where(R == 0 , False, True)
+	    mask_inverse = mask == False
+
+	    return mask,mask_inverse
 
 	#-----------------------------------------BATCH CONTROL----------------------------
 
