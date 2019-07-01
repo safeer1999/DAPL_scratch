@@ -25,4 +25,5 @@ predicted_results
 results
 saved_model
 trained_model
-view_mask.csvaccessory_scripts/
+view_mask.csv
+accessory_scripts/
