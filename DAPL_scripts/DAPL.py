@@ -183,7 +183,7 @@ class DAPL :
 				#batch control variables
 				train_batch_size = batch_size
 				val_batch_size = int(batch_size*(val_set.shape[0]*1.0 / train_set.shape[0]))
-
+				#initialization of batch control variables
 				batch_beg_train, batch_end_train, total_batch_train = Dataset.batch_init(dataset = train_set, batch_size = train_batch_size) #for training
 				batch_beg_val, batch_end_val, total_batch_val = Dataset.batch_init(dataset = val_set, batch_size = val_batch_size) #for validation
 
