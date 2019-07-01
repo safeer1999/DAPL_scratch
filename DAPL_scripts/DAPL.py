@@ -8,14 +8,13 @@ from DataHandler import DataHandler
 
 class DAPL :
 
-	def __init__(self,learning_rate = 0.1 , epochs = 10 , batch_size = 20, missing_perc = 0.1, shape = (0,0)) :
+	def __init__(self,learning_rate = 0.1 , epochs = 10 , batch_size = 20, shape = (0,0)) :
 
 
 		#Parameters
 		self.learning_rate = learning_rate
 		self.epochs = epochs
 		self.shape = shape # to be inititialized in while network building
-		self.missing_perc = missing_perc
 
 		#Session variables
 		self.sess = None
@@ -152,22 +151,19 @@ class DAPL :
 		print("Val_Shape: ",val_set.shape)
 		print("Test_Shape: ",test_set.shape)
 
-		if Dataset.mask_given :
-			train_mask, val_mask, test_mask = Dataset.split(Dataset.mask)
-			test_mask_inverse = np.where(test_mask , 0 , 1)
+		
+		train_mask, val_mask, test_mask = Dataset.split(Dataset.mask)
+		test_mask_inverse = np.where(test_mask , 0 , 1)
 
-		else :
-			train_mask = None
-			val_mask = None
-			test_mask_inverse = np.random.binomial(1, self.missing_perc, size=test_set.shape[0]*test_set.shape[1]).reshape(test_set.shape[0], test_set.shape[1]) #abstract random mask creation
-			test_mask = np.where(test_mask_inverse , 0 , 1)
 
+		#theses matrices will contain all the batches compiled together
 		full_recons_matrix = np.empty(shape = (0,self.shape[1]))
 		full_mask_matrix = np.empty(shape = (0,self.shape[1]))
 
 		full_val_recons_matrix = np.empty(shape = (0,self.shape[1]))
 		full_val_mask_matrix = np.empty(shape = (0,self.shape[1]))
 
+		#initializes all tensorflow variables
 		init_op = tf.global_variables_initializer()
 
 		terminal_output = open("../epoch_dump.txt","w")#Writes all the contents displayed on the terminal to a dump file
@@ -200,12 +196,12 @@ class DAPL :
 					row_size = batch_end_train - batch_beg_train
 
 					batch_x = Dataset.next_batch(train_set, batch_beg_train, batch_end_train)
-					batch_mask, batch_mask_inverse = Dataset.next_batch_mask(batch_beg_train, batch_end_train, row_size, self.missing_perc, dataset = train_mask)
+					batch_mask, batch_mask_inverse = Dataset.next_batch_mask(train_mask, batch_beg_train, batch_end_train)
 					batch_beg_train, batch_end_train = Dataset.inc_batch(batch_beg_train, batch_end_train, train_batch_size)
 
-					#print('training: ', batch_x.shape, batch_mask.shape)
 					corrupted_batch = np.asarray(batch_x)*np.asarray(batch_mask)
 
+					#print('training: ', batch_x.shape, batch_mask.shape)
 					#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
 					#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
 
@@ -219,12 +215,12 @@ class DAPL :
 					row_size_val = batch_end_val - batch_beg_val
 
 					batch_x_val = Dataset.next_batch(val_set, batch_beg_val, batch_end_val)
-					batch_mask_val, batch_mask_inverse_val = Dataset.next_batch_mask(batch_beg_val, batch_end_val, row_size_val, self.missing_perc,dataset = val_mask)
+					batch_mask_val, batch_mask_inverse_val = Dataset.next_batch_mask(val_mask, batch_beg_val, batch_end_val)
 					batch_beg_val, batch_end_val = Dataset.inc_batch(batch_beg_val, batch_end_val, val_batch_size)
 
-					#print('validation: ', batch_x_val.shape)
 					corrupted_batch_val = np.asarray(batch_x_val)*np.asarray(batch_mask_val)
 
+					#print('validation: ', batch_x_val.shape)
 					#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
 					#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
 

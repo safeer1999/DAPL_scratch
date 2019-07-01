@@ -8,13 +8,13 @@ import scipy.sparse as scp
 
 class DataHandler :
 
-	def __init__(self, directory_path, mask_given  = False):
+	def __init__(self, directory_path, mask_given  = False, missing_perc = 0.01):
 		self.R = scp.load_npz(directory_path).todense()
 		self.mask_given = mask_given
 		if self.mask_given :
 			self.mask = scp.load_npz(directory_path +  '/' + 'train_mask.npz').todense()
 		else :
-			self.mask = None
+			self.mask = np.random.binomial(1, missing_perc, size=self.R.shape[0]*self.R.shape[1]).reshape(self.R.shape[0], self.R.shape[1])
 
 
 	def split(self,dataset, val_perc = 0.1, test_perc = 0.2):
@@ -61,18 +61,11 @@ class DataHandler :
 
 		return batch_R
 
-	def next_batch_mask(self, batch_beg, batch_end, row_size = 0, missing_perc = 0.1, dataset = None) :#produce batch for mask matrix or produces a random generated batch using missing_perc
-
-		if self.mask_given :
-			batch_mask = dataset[batch_beg:batch_end, :]
-			batch_mask_inverse = np.where(batch_mask , 0 , 1)
-			#print('batch_mask.shape: ',batch_mask.shape)
-
-		else :
-			#print('row_size', row_size)
-			batch_mask_inverse = np.random.binomial(1, missing_perc, size=row_size*self.R.shape[1]).reshape(row_size, self.R.shape[1])
-			batch_mask = np.where(batch_mask_inverse , 0 , 1)
-
+	def next_batch_mask(self, dataset, batch_beg, batch_end) :#produce batch for mask matrix or produces a random generated batch using missing_perc
+		
+		batch_mask = dataset[batch_beg:batch_end, :]
+		batch_mask_inverse = np.where(batch_mask , 0 , 1)
+		#print('batch_mask.shape: ',batch_mask.shape)
 
 		return batch_mask,batch_mask_inverse
 

@@ -33,8 +33,8 @@ args.missing_perc/=100.0
 def main() :
 
 	#mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
-	model = DAPL(learning_rate = args.lr , epochs = args.epochs , missing_perc = args.missing_perc, shape = Dataset.R.shape)
+	Dataset = DataHandler(args.input_file, mask_given = args.set_mask, missing_perc = args.missing_perc)
+	model = DAPL(learning_rate = args.lr , epochs = args.epochs , shape = Dataset.R.shape)
 	model.init_tensors()
 	model.netBuild(featureNum = Dataset.R.shape[1])
 	model.define_network()
