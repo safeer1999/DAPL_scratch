@@ -76,7 +76,7 @@ def create_dataset(mask_cycle, append_cycle = 20, experiment_dir = None, view_ma
         os.mkdir(dir_name)
     
     #view_mask = train_mask
-    pd.DataFrame(train_mask).to_csv('view_mask.csv')
+    #pd.DataFrame(train_mask).to_csv('view_mask.csv')
     
     sparse_train_mask = scp.csc_matrix(train_mask)
     sparse_train = scp.csc_matrix(np.asarray(train))
