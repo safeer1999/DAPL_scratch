@@ -170,7 +170,7 @@ class DAPL :
 
 		init_op = tf.global_variables_initializer()
 
-		terminal_output = open(results_filePath+"/epoch_dump.txt","w")#Writes all the contents displayed on the terminal to a dump file
+		terminal_output = open("../epoch_dump.txt","w")#Writes all the contents displayed on the terminal to a dump file
 
 		with tf.Session() as sess :
 
