@@ -29,6 +29,8 @@ class DAPL :
 
 	def init_tensors(self) :
 
+		tf.reset_default_graph()
+
 		#Training Paceholders
 		self.X = tf.placeholder(tf.float32, [None, self.shape[1]])
 		self.X_mask = tf.placeholder(tf.float32, [None, self.shape[1]])
@@ -325,7 +327,7 @@ class DAPL :
 		self.loader.restore(sess,model_dir)
 
 
-		self.graph = tf.get_default_graph()
+		#self.graph = tf.get_default_graph()
 
 	def restore_network_weights_biases(self,num_nodes) :
 
@@ -344,14 +346,22 @@ class DAPL :
 			#print('axis_0: ', axis_0,"  axis_1: ", axis_1)
 			#print('-----------------------------------------------------------')
 
-			W = self.graph.get_tensor_by_name('W' + str(i) + ':0')
-			b = self.graph.get_tensor_by_name('b' + str(i) + ':0')
+			#W = self.graph.get_tensor_by_name('W' + str(i) + ':0')
+			#b = self.graph.get_tensor_by_name('b' + str(i) + ':0')
+
+			W = tf.get_variable('W'+str(i), shape = [axis_0,axis_1])
+			b = tf.get_variable('b'+str(i), shape = [axis_1])
 
 			self.weights.append(W)
 			self.biases.append(b)
 
-	def test_git(self) :
-		pass 
+
+	def set_loader(self) :
+		self.loader = tf.train.Saver()
+		
+
+		self.sess = tf.Session()
+
 
 
 
