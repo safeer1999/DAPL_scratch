@@ -39,12 +39,14 @@ def main() :
 	model.set_loader()
 	model.restore_model(model.sess,args.model_dir)
 	model.define_network(mode = 'train')
-	print("-----------------------------------------------------------------")
+	
+	'''
+	#print("-----------------------------------------------------------------")
 	for op in tf.get_default_graph().get_operations():
 		print(str(op.name))
 
-	print("-----------------------------------------------------------------")
-
+	#print("-----------------------------------------------------------------")
+	'''
 
 	_,_,test_set = Dataset.split(Dataset.R)
 	test_mask_inverse = np.random.binomial(1, 0.05, size=test_set.shape[0]*test_set.shape[1]).reshape(test_set.shape[0], test_set.shape[1]) #abstract random mask creation
