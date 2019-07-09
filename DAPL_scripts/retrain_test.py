@@ -12,14 +12,14 @@ from DataHandler import DataHandler
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_file")
 parser.add_argument("--set_mask", type = bool, default = False)
-#parser.add_argument("--lr", type = float, default = 0.001)
-#parser.add_argument("--epochs", type = int, default = 10)
-#parser.add_argument("--batch_size", type = int , default = 100)
-#parser.add_argument("--shape" , default  = '0,0' )
-#parser.add_argument("--missing_perc", type = float , default = 1)
+parser.add_argument("--lr", type = float, default = 0.001)
+parser.add_argument("--epochs", type = int, default = 10)
+parser.add_argument("--batch_size", type = int , default = 100)
+parser.add_argument("--shape" , default  = '0,0' )
+parser.add_argument("--missing_perc", type = float , default = 1)
 parser.add_argument("--save_results", type = bool, default = False)
 parser.add_argument("--output_filePath")
-#parser.add_argument("--save_model", type = bool, default = False)
+parser.add_argument("--save_model", type = bool, default = False)
 parser.add_argument("--model_dir")
 
 args = parser.parse_args()
@@ -27,7 +27,7 @@ args = parser.parse_args()
 #-----------------------------------------------------------------------------------------------
 
 
-def main() :
+def main_test() :
 
 	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
 
@@ -61,4 +61,25 @@ def main() :
 	print("Loss: ", loss)
 	print("Accuracy: ", acc)
 
-main()
+
+
+def main_train() :
+
+	Dataset = DataHandler(args.input_file, mask_given = args.set_mask)
+
+	model = DAPL(shape = Dataset.R.shape)
+
+
+	model.init_tensors()
+	model.netBuild(featureNum = Dataset.R.shape[1], load_model_bool = True)
+	model.set_loader()
+	model.restore_model(model.sess,args.model_dir)
+	model.define_network(mode = 'train')
+
+
+	
+	model.train(Dataset, save_results = args.save_results, results_filePath = args.output_filePath, mask_filePath = args.output_filePath, batch_size = args.batch_size, save_model_bool = args.save_model, model_dir = args.model_dir)
+
+
+#main_test()
+main_train()

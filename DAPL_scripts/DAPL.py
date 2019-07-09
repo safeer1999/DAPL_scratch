@@ -170,113 +170,120 @@ class DAPL :
 
 		terminal_output = open("../epoch_dump.txt","w")#Writes all the contents displayed on the terminal to a dump file
 
-		with tf.Session() as sess :
+		#with tf.Session() as sess :
 
-			sess.run(init_op)
+		if self.sess == None :
+			sess = tf.Session()
 
-			#Variables for finding the best model variables
-			max_acc = 0
-			current_acc = 0
-			max_acc_epoch = 0
+		else :
+			sess = self.sess
 
-			for epoch in range(self.epochs) :
+		sess.run(init_op)
 
-				l = 0
-				#batch control variables
-				train_batch_size = batch_size
-				val_batch_size = int(batch_size*(val_set.shape[0]*1.0 / train_set.shape[0]))
-				#initialization of batch control variables
-				batch_beg_train, batch_end_train, total_batch_train = Dataset.batch_init(dataset = train_set, batch_size = train_batch_size) #for training
-				batch_beg_val, batch_end_val, total_batch_val = Dataset.batch_init(dataset = val_set, batch_size = val_batch_size) #for validation
+		#Variables for finding the best model variables
+		max_acc = 0
+		current_acc = 0
+		max_acc_epoch = 0
 
+		for epoch in range(self.epochs) :
 
-				#print("total_batch: ", total_batch)
-				for i in range(total_batch_train) :
-
-					#-----------------------------------------TRAINING--------------------------------------
-
-					row_size = batch_end_train - batch_beg_train
-
-					batch_x = Dataset.next_batch(train_set, batch_beg_train, batch_end_train)
-					batch_mask, batch_mask_inverse = Dataset.next_batch_mask(train_mask, batch_beg_train, batch_end_train)
-					batch_beg_train, batch_end_train = Dataset.inc_batch(batch_beg_train, batch_end_train, train_batch_size)
-
-					corrupted_batch = np.asarray(batch_x)*np.asarray(batch_mask)
-
-					#print('training: ', batch_x.shape, batch_mask.shape)
-					#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
-					#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
+			l = 0
+			#batch control variables
+			train_batch_size = batch_size
+			val_batch_size = int(batch_size*(val_set.shape[0]*1.0 / train_set.shape[0]))
+			#initialization of batch control variables
+			batch_beg_train, batch_end_train, total_batch_train = Dataset.batch_init(dataset = train_set, batch_size = train_batch_size) #for training
+			batch_beg_val, batch_end_val, total_batch_val = Dataset.batch_init(dataset = val_set, batch_size = val_batch_size) #for validation
 
 
+			#print("total_batch: ", total_batch)
+			for i in range(total_batch_train) :
 
-					_, l, recons_batch = sess.run([self.optimizer, self.loss, self.recons_X], feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
-					#-----------------------------------------------------------------------------------------
+				#-----------------------------------------TRAINING--------------------------------------
 
-					#-----------------------------------------VALIDATION--------------------------------------
+				row_size = batch_end_train - batch_beg_train
 
-					row_size_val = batch_end_val - batch_beg_val
+				batch_x = Dataset.next_batch(train_set, batch_beg_train, batch_end_train)
+				batch_mask, batch_mask_inverse = Dataset.next_batch_mask(train_mask, batch_beg_train, batch_end_train)
+				batch_beg_train, batch_end_train = Dataset.inc_batch(batch_beg_train, batch_end_train, train_batch_size)
 
-					batch_x_val = Dataset.next_batch(val_set, batch_beg_val, batch_end_val)
-					batch_mask_val, batch_mask_inverse_val = Dataset.next_batch_mask(val_mask, batch_beg_val, batch_end_val)
-					batch_beg_val, batch_end_val = Dataset.inc_batch(batch_beg_val, batch_end_val, val_batch_size)
+				corrupted_batch = np.asarray(batch_x)*np.asarray(batch_mask)
 
-					corrupted_batch_val = np.asarray(batch_x_val)*np.asarray(batch_mask_val)
-
-					#print('validation: ', batch_x_val.shape)
-					#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
-					#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
-
-					l_val,recons_batch_val = sess.run([self.loss, self.recons_X], feed_dict = {self.X : batch_x_val, self.input_X : corrupted_batch_val, self.X_mask_inverse : batch_mask_inverse_val})
-
-
-					#------------------------------------------------------------------------------------------
-					
-					if epoch == (self.epochs-1) :
-						full_recons_matrix = Dataset.compile_batches(recons_batch, full_recons_matrix)
-						full_mask_matrix = Dataset.compile_batches(batch_mask, full_mask_matrix)
-						#print("full_recons_matrix.shape: ", full_recons_matrix.shape)
-
-						full_val_recons_matrix = Dataset.compile_batches(recons_batch_val, full_val_recons_matrix)
-						full_val_mask_matrix = Dataset.compile_batches(batch_mask_val, full_val_mask_matrix)
+				#print('training: ', batch_x.shape, batch_mask.shape)
+				#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
+				#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
 
 
 
-				#Evaluating correlation of validation set output
-				#Used to chose the best model parameter
-				batch_x_val_masked = batch_x_val[batch_mask_val == 0]
-				recons_batch_val_masked = recons_batch_val[batch_mask_val == 0]
-				current_acc = Dataset.correl(batch_x_val_masked, recons_batch_val_masked)
+				_, l, recons_batch = sess.run([self.optimizer, self.loss, self.recons_X], feed_dict = {self.X : batch_x, self.input_X : corrupted_batch, self.X_mask : batch_mask, self.X_mask_inverse : batch_mask_inverse})
+				#-----------------------------------------------------------------------------------------
 
-				if current_acc >= max_acc :
-					max_acc = current_acc
-					max_acc_epoch = epoch
+				#-----------------------------------------VALIDATION--------------------------------------
 
-					if save_model_bool :
-						self.save_model(sess, model_dir)
-						print('\nSaving Model at Epoch: ',epoch+1)
-						terminal_output.write('\nSaving Model at Epoch: '+str(epoch) + '\n')
-				 
+				row_size_val = batch_end_val - batch_beg_val
 
-				print("Epoch: ", epoch + 1, "\ncost: ", "{:.5}".format(l))
-				print('cost_val: ',"{:.5}".format(l_val))
-				print("Accuracy: ",current_acc)
-				print('\n')
+				batch_x_val = Dataset.next_batch(val_set, batch_beg_val, batch_end_val)
+				batch_mask_val, batch_mask_inverse_val = Dataset.next_batch_mask(val_mask, batch_beg_val, batch_end_val)
+				batch_beg_val, batch_end_val = Dataset.inc_batch(batch_beg_val, batch_end_val, val_batch_size)
 
-				#Write above print values to epoch_dump.txt
-				terminal_output.write("Epoch: " +  str(epoch + 1)+ "\ncost: "+ "{:.5}\n".format(l))
-				terminal_output.write('cost_val: ' + "{:.5}\n".format(l_val))
-				terminal_output.write("Accuracy: " + str(current_acc) + '\n\n')
+				corrupted_batch_val = np.asarray(batch_x_val)*np.asarray(batch_mask_val)
+
+				#print('validation: ', batch_x_val.shape)
+				#print("X: ",type(batch_x)," ",batch_x.shape,"\n\n")
+				#print("y: ",type(batch_y)," ",batch_y.shape,"\n\n\n")
+
+				l_val,recons_batch_val = sess.run([self.loss, self.recons_X], feed_dict = {self.X : batch_x_val, self.input_X : corrupted_batch_val, self.X_mask_inverse : batch_mask_inverse_val})
 
 
+				#------------------------------------------------------------------------------------------
+				
+				if epoch == (self.epochs-1) :
+					full_recons_matrix = Dataset.compile_batches(recons_batch, full_recons_matrix)
+					full_mask_matrix = Dataset.compile_batches(batch_mask, full_mask_matrix)
+					#print("full_recons_matrix.shape: ", full_recons_matrix.shape)
+
+					full_val_recons_matrix = Dataset.compile_batches(recons_batch_val, full_val_recons_matrix)
+					full_val_mask_matrix = Dataset.compile_batches(batch_mask_val, full_val_mask_matrix)
 
 
 
-			print("Highest Accuracy {} at Epoch {}".format(max_acc,max_acc_epoch+1))
-			terminal_output.write("Highest Accuracy {} at Epoch {}\n".format(max_acc,max_acc_epoch+1))
+			#Evaluating correlation of validation set output
+			#Used to chose the best model parameter
+			batch_x_val_masked = batch_x_val[batch_mask_val == 0]
+			recons_batch_val_masked = recons_batch_val[batch_mask_val == 0]
+			current_acc = Dataset.correl(batch_x_val_masked, recons_batch_val_masked)
 
-			#test_loss,test_recons= self.test(test_set,sess, test_mask, test_mask_inverse)
+			if current_acc >= max_acc :
+				max_acc = current_acc
+				max_acc_epoch = epoch
+
+				if save_model_bool :
+					self.save_model(sess, model_dir)
+					print('\nSaving Model at Epoch: ',epoch+1)
+					terminal_output.write('\nSaving Model at Epoch: '+str(epoch) + '\n')
+			 
+
+			print("Epoch: ", epoch + 1, "\ncost: ", "{:.5}".format(l))
+			print('cost_val: ',"{:.5}".format(l_val))
+			print("Accuracy: ",current_acc)
+			print('\n')
+
+			#Write above print values to epoch_dump.txt
+			terminal_output.write("Epoch: " +  str(epoch + 1)+ "\ncost: "+ "{:.5}\n".format(l))
+			terminal_output.write('cost_val: ' + "{:.5}\n".format(l_val))
+			terminal_output.write("Accuracy: " + str(current_acc) + '\n\n')
+
+
+
+
+
+		print("Highest Accuracy {} at Epoch {}".format(max_acc,max_acc_epoch+1))
+		terminal_output.write("Highest Accuracy {} at Epoch {}\n".format(max_acc,max_acc_epoch+1))
+
+		#test_loss,test_recons= self.test(test_set,sess, test_mask, test_mask_inverse)
 
 		terminal_output.close()
+		#sess.close()
 
 
 
