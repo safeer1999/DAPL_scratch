@@ -8,3 +8,6 @@ if the other commnad line arguments are not specified above the code will assume
 ## Running Test
 
 ```python3 test_savedModel.py --input_file <input file path> --model_dir <saved model directory path>```
+
+
+The above scripts are available in the DAPL_scripts directory
